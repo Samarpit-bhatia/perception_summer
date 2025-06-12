@@ -1,0 +1,21 @@
+[0.711s] Invoking command in '/home/samarpit_bhatia/perception_summer/src/lidar_cone_detector': PYTHONPATH=/home/samarpit_bhatia/perception_summer/build/lidar_cone_detector/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/samarpit_bhatia/perception_summer/install/lidar_cone_detector/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/lidar_cone_detector build --build-base /home/samarpit_bhatia/perception_summer/build/lidar_cone_detector/build install --record /home/samarpit_bhatia/perception_summer/build/lidar_cone_detector/install.log --single-version-externally-managed install_data
+[0.903s] running egg_info
+[0.903s] writing ../../build/lidar_cone_detector/lidar_cone_detector.egg-info/PKG-INFO
+[0.904s] writing dependency_links to ../../build/lidar_cone_detector/lidar_cone_detector.egg-info/dependency_links.txt
+[0.904s] writing entry points to ../../build/lidar_cone_detector/lidar_cone_detector.egg-info/entry_points.txt
+[0.904s] writing requirements to ../../build/lidar_cone_detector/lidar_cone_detector.egg-info/requires.txt
+[0.904s] writing top-level names to ../../build/lidar_cone_detector/lidar_cone_detector.egg-info/top_level.txt
+[0.906s] reading manifest file '../../build/lidar_cone_detector/lidar_cone_detector.egg-info/SOURCES.txt'
+[0.907s] writing manifest file '../../build/lidar_cone_detector/lidar_cone_detector.egg-info/SOURCES.txt'
+[0.907s] running build
+[0.907s] running build_py
+[0.907s] running install
+[0.907s] running install_lib
+[0.908s] running install_data
+[0.909s] running install_egg_info
+[0.910s] removing '/home/samarpit_bhatia/perception_summer/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector-0.0.0-py3.10.egg-info' (and everything under it)
+[0.910s] Copying ../../build/lidar_cone_detector/lidar_cone_detector.egg-info to /home/samarpit_bhatia/perception_summer/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector-0.0.0-py3.10.egg-info
+[0.911s] running install_scripts
+[0.925s] Installing cone_detector_node script to /home/samarpit_bhatia/perception_summer/install/lidar_cone_detector/lib/lidar_cone_detector
+[0.926s] writing list of installed files to '/home/samarpit_bhatia/perception_summer/build/lidar_cone_detector/install.log'
+[0.945s] Invoked command in '/home/samarpit_bhatia/perception_summer/src/lidar_cone_detector' returned '0': PYTHONPATH=/home/samarpit_bhatia/perception_summer/build/lidar_cone_detector/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/samarpit_bhatia/perception_summer/install/lidar_cone_detector/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/lidar_cone_detector build --build-base /home/samarpit_bhatia/perception_summer/build/lidar_cone_detector/build install --record /home/samarpit_bhatia/perception_summer/build/lidar_cone_detector/install.log --single-version-externally-managed install_data

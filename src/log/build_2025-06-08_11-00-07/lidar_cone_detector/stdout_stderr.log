@@ -1,0 +1,35 @@
+running egg_info
+creating ../build/lidar_cone_detector/lidar_cone_detector.egg-info
+writing ../build/lidar_cone_detector/lidar_cone_detector.egg-info/PKG-INFO
+writing dependency_links to ../build/lidar_cone_detector/lidar_cone_detector.egg-info/dependency_links.txt
+writing entry points to ../build/lidar_cone_detector/lidar_cone_detector.egg-info/entry_points.txt
+writing requirements to ../build/lidar_cone_detector/lidar_cone_detector.egg-info/requires.txt
+writing top-level names to ../build/lidar_cone_detector/lidar_cone_detector.egg-info/top_level.txt
+writing manifest file '../build/lidar_cone_detector/lidar_cone_detector.egg-info/SOURCES.txt'
+reading manifest file '../build/lidar_cone_detector/lidar_cone_detector.egg-info/SOURCES.txt'
+writing manifest file '../build/lidar_cone_detector/lidar_cone_detector.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/build
+creating /home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/build/lib
+creating /home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/build/lib/lidar_cone_detector
+copying lidar_cone_detector/cone_detector_node.py -> /home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/build/lib/lidar_cone_detector
+copying lidar_cone_detector/__init__.py -> /home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/build/lib/lidar_cone_detector
+running install
+running install_lib
+creating /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector
+copying /home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/build/lib/lidar_cone_detector/cone_detector_node.py -> /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector
+copying /home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/build/lib/lidar_cone_detector/__init__.py -> /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector
+byte-compiling /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector/cone_detector_node.py to cone_detector_node.cpython-310.pyc
+byte-compiling /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector/__init__.py to __init__.cpython-310.pyc
+running install_data
+creating /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/share/ament_index
+creating /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/share/ament_index/resource_index
+creating /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/share/ament_index/resource_index/packages
+copying resource/lidar_cone_detector -> /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/share/ament_index/resource_index/packages
+copying package.xml -> /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/share/lidar_cone_detector
+running install_egg_info
+Copying ../build/lidar_cone_detector/lidar_cone_detector.egg-info to /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/lib/python3.10/site-packages/lidar_cone_detector-0.0.0-py3.10.egg-info
+running install_scripts
+Installing cone_detector_node script to /home/samarpit_bhatia/perception_summer/src/install/lidar_cone_detector/lib/lidar_cone_detector
+writing list of installed files to '/home/samarpit_bhatia/perception_summer/src/build/lidar_cone_detector/install.log'

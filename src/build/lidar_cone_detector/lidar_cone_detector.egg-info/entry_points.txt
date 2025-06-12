@@ -1,0 +1,3 @@
+[console_scripts]
+cone_detector_node = lidar_cone_detector.cone_detector_node:main
+
