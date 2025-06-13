@@ -1,267 +1,166 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
-from sklearn.cluster import DBSCAN
-import numpy as np
 from sensor_msgs.msg import PointCloud
 from visualization_msgs.msg import Marker, MarkerArray
-from geometry_msgs.msg import Point
-from typing import List
 
-class ConeDetector(Node):
+from sklearn.cluster import DBSCAN
+from sklearn.linear_model import RANSACRegressor
+import numpy as np
+
+
+class LidarConeClassifier(Node):
     """
-    A ROS2 node that detects cones from point cloud data and visualizes them as markers.
-    
-    This node subscribes to point cloud data, clusters the points using DBSCAN,
-    classifies clusters as either yellow or blue cones based on intensity patterns,
-    and publishes visualization markers for RViz.
+    Node to detect and categorize cones in LiDAR point cloud using DBSCAN and intensity profiles.
     """
-    
+
     def __init__(self):
-        super().__init__('cone_detector')
-        
-        # Parameters (could be made configurable via ROS parameters)
-        self._min_cluster_size = 2
-        self._cluster_eps = 2.0  # meters
-        self._min_height = -0.16  # meters (filter points below this)
-        self._top_cone_height_range = (0.10, 0.14)  # meters
-        self._mid_cone_height_range = (-0.01, 0.0)  # meters
-        self._intensity_diff_threshold = 1e-10
-        self._cone_radius = 0.2  # meters (for visualization)
-        self._cone_height = 0.31  # meters (for visualization)
-        self._cone_visualization_z = 0.155  # meters (half height)
-        self._marker_lifetime = Duration(seconds=0.1)
-        
-        # Subscriber and publisher
-        self._pointcloud_sub = self.create_subscription(
-            PointCloud, 
-            '/carmaker/pointcloud', 
-            self._process_pointcloud, 
-            10
-        )
-        self._marker_pub = self.create_publisher(
-            MarkerArray, 
-            '/cones', 
-            10
-        )
-        
-        self._marker_id_counter = 0
+        super().__init__('lidar_cone_classifier')
 
-    def _process_pointcloud(self, msg: PointCloud) -> None:
+        # Setup subscriber and publisher
+        self.create_subscription(PointCloud, '/carmaker/pointcloud', self.handle_pointcloud, 10)
+        self.marker_pub = self.create_publisher(MarkerArray, '/cones', 10)
+
+        # Internal state
+        self.current_marker_id = 0
+        self.get_logger().info("LiDAR Cone Classifier Node is active.")
+
+    def handle_pointcloud(self, msg: PointCloud):
         """
-        Process incoming point cloud message to detect and visualize cones.
-        
-        Args:
-            msg: The incoming PointCloud message
+        Triggered on reception of new point cloud data.
         """
         if not msg.points:
-            self.get_logger().debug("Received empty point cloud")
+            self.get_logger().warn("Received empty point cloud.")
             return
-            
+
         try:
-            # Convert point cloud to numpy array
-            points = self._convert_pointcloud_to_array(msg)
-            
-            # Filter points by height
-            filtered_points = self._filter_by_height(points)
+            # Prepare point and intensity arrays
+            points = np.array([[p.x, p.y, p.z] for p in msg.points])
+            intensities = np.array(msg.channels[0].values)
+            if np.max(intensities) > 0:
+                intensities /= np.max(intensities)
+            enriched_points = np.column_stack((points, intensities))
+
+            # Eliminate ground surface
+            filtered_points = self.remove_ground(enriched_points)
             if filtered_points.size == 0:
                 return
-                
-            # Cluster points
-            clusters = self._cluster_points(filtered_points)
-            if not clusters:
-                return
-                
-            # Create visualization markers
-            marker_array = self._create_markers(clusters)
-            self._marker_pub.publish(marker_array)
-            
+
+            # Group points using DBSCAN
+            db = DBSCAN(eps=1.0, min_samples=2)
+            labels = db.fit_predict(filtered_points[:, :2])
+
+            # Prepare marker array and delete old ones
+            markers = MarkerArray()
+            delete_all = Marker(action=Marker.DELETEALL)
+            markers.markers.append(delete_all)
+            self.current_marker_id = 0
+
+            for label in set(labels):
+                if label == -1:
+                    continue
+
+                cluster = filtered_points[labels == label]
+                if cluster.shape[0] < 3:
+                    continue
+
+                color_tag = self.detect_color(cluster)
+                if color_tag == 'white':
+                    continue  # skip uncertain cones
+
+                pos = np.mean(cluster[:, :2], axis=0)
+                marker = self.generate_marker(pos, color_tag)
+                markers.markers.append(marker)
+                self.current_marker_id += 1
+
+            self.marker_pub.publish(markers)
+
         except Exception as e:
-            self.get_logger().error(f"Error processing point cloud: {str(e)}")
+            self.get_logger().error(f"Point cloud processing failed: {e}")
 
-    def _convert_pointcloud_to_array(self, msg: PointCloud) -> np.ndarray:
+    def remove_ground(self, data: np.ndarray) -> np.ndarray:
         """
-        Convert PointCloud message to numpy array with x,y,z,intensity.
-        
-        Args:
-            msg: PointCloud message
-            
-        Returns:
-            Numpy array of shape (n_points, 4) containing [x, y, z, intensity]
+        Attempt to filter out ground points using a plane model with RANSAC.
         """
-        # Extract points and intensity (assuming intensity is in first channel)
-        points = np.array([[p.x, p.y, p.z] for p in msg.points])
-        intensities = np.array(msg.channels[0].values)
-        
-        # Normalize intensity (0-1 range)
-        if intensities.max() > 0:
-            intensities = intensities / intensities.max()
-            
-        return np.column_stack((points, intensities))
+        if data.shape[0] < 10:
+            return data
 
-    def _filter_by_height(self, points: np.ndarray) -> np.ndarray:
-        """
-        Filter points above a minimum height threshold.
-        
-        Args:
-            points: Numpy array of points (x,y,z,intensity)
-            
-        Returns:
-            Filtered array of points
-        """
-        return points[points[:, 2] > self._min_height]
+        try:
+            xy = data[:, :2]
+            z = data[:, 2]
+            ransac = RANSACRegressor(residual_threshold=0.02)
+            ransac.fit(xy, z)
+            return data[~ransac.inlier_mask_]
+        except Exception as err:
+            self.get_logger().error(f"RANSAC exception: {err}")
+            return data
 
-    def _cluster_points(self, points: np.ndarray) -> List[np.ndarray]:
+    def detect_color(self, cluster: np.ndarray) -> str:
         """
-        Cluster points using DBSCAN algorithm.
-        
-        Args:
-            points: Numpy array of points (x,y,z,intensity)
-            
-        Returns:
-            List of clusters (each cluster is a numpy array)
+        Estimate the cone's color by analyzing the vertical distribution of intensity.
         """
-        # Use only x,y coordinates for clustering
-        xy_coords = points[:, :2]
-        
-        dbscan = DBSCAN(
-            eps=self._cluster_eps, 
-            min_samples=self._min_cluster_size
-        ).fit(xy_coords)
-        
-        labels = dbscan.labels_
-        unique_labels = set(labels)
-        
-        clusters = []
-        for label in unique_labels:
-            if label == -1:  # Skip noise
-                continue
-            clusters.append(points[labels == label])
-            
-        return clusters
+        z = cluster[:, 2]
+        intensity = cluster[:, 3]
 
-    def _create_markers(self, clusters: List[np.ndarray]) -> MarkerArray:
-        """
-        Create visualization markers for detected cones.
-        
-        Args:
-            clusters: List of point clusters
-            
-        Returns:
-            MarkerArray containing visualization markers
-        """
-        marker_array = MarkerArray()
-        
-        # Clear previous markers
-        clear_marker = Marker()
-        clear_marker.action = Marker.DELETEALL
-        marker_array.markers.append(clear_marker)
-        
-        for cluster in clusters:
-            marker = self._create_cone_marker(cluster)
-            if marker:
-                marker_array.markers.append(marker)
-                self._marker_id_counter += 1
-                
-        return marker_array
+        top = (z >= 0.08)
+        mid = (z >= -0.02) & (z < 0.01)
+        bottom = (z < -0.09)
 
-    def _create_cone_marker(self, cluster: np.ndarray) -> Marker:
-        """
-        Create a single cone marker from a cluster of points.
-        
-        Args:
-            cluster: Numpy array of points in the cluster
-            
-        Returns:
-            Marker object or None if cluster doesn't meet criteria
-        """
-        # Calculate cluster centroid
-        centroid = np.mean(cluster[:, :2], axis=0)
-        
-        # Extract points from different height regions
-        top_points = cluster[
-            (cluster[:, 2] > self._top_cone_height_range[0]) & 
-            (cluster[:, 2] < self._top_cone_height_range[1])
-        ]
-        
-        mid_points = cluster[
-            (cluster[:, 2] > self._mid_cone_height_range[0]) & 
-            (cluster[:, 2] < self._mid_cone_height_range[1])
-        ]
-        
-        # Skip if we don't have points in both regions
-        if top_points.size == 0 or mid_points.size == 0:
-            return None
-            
-        # Calculate intensity characteristics
-        top_intensity = np.max(top_points[:, 3])
-        mid_intensity = np.mean(mid_points[:, 3])
-        
-        # Determine cone color based on intensity pattern
-        if (top_intensity - mid_intensity) > self._intensity_diff_threshold:
-            return self._create_marker(
-                position=centroid,
-                ns="yellow_cones",
-                color=(1.0, 1.0, 0.0)  # Yellow
-            )
+        top_mean = np.mean(intensity[top]) if np.any(top) else 0.0
+        mid_mean = np.mean(intensity[mid]) if np.any(mid) else 0.0
+        bottom_mean = np.mean(intensity[bottom]) if np.any(bottom) else 0.0
+
+        # Classification heuristic
+        if 0.0 in (top_mean, mid_mean, bottom_mean):
+            return 'white'
+        elif (top_mean - mid_mean > 1e-12) or (bottom_mean - mid_mean > 1e-12):
+            return 'yellow'
+        elif (top_mean - mid_mean < -1e-3) or (bottom_mean - mid_mean < -1e-3):
+            return 'blue'
         else:
-            return self._create_marker(
-                position=centroid,
-                ns="blue_cones",
-                color=(0.0, 0.0, 1.0)  # Blue
-            )
+            return 'white'
 
-    def _create_marker(
-        self, 
-        position: np.ndarray, 
-        ns: str, 
-        color: tuple
-    ) -> Marker:
+    def generate_marker(self, position, color_name) -> Marker:
         """
-        Create a visualization marker for a cone.
-        
-        Args:
-            position: (x,y) position of the cone
-            ns: Namespace for the marker
-            color: (r,g,b) tuple for marker color
-            
-        Returns:
-            Configured Marker object
+        Construct a cylinder marker representing a detected cone.
         """
+        color_map = {
+            'yellow': (1.0, 1.0, 0.0),
+            'blue': (0.0, 0.0, 1.0),
+            'white': (1.0, 1.0, 1.0)
+        }
+
         marker = Marker()
-        marker.header.frame_id = "Lidar_F"
+        marker.header.frame_id = 'Lidar_F'
         marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = ns
-        marker.id = self._marker_id_counter
+        marker.ns = 'cone_markers'
+        marker.id = self.current_marker_id
         marker.type = Marker.CYLINDER
         marker.action = Marker.ADD
-        
-        # Set position and orientation
+
         marker.pose.position.x = float(position[0])
         marker.pose.position.y = float(position[1])
-        marker.pose.position.z = self._cone_visualization_z
-        marker.pose.orientation.w = 1.0  # Identity quaternion
-        
-        # Set scale (size)
-        marker.scale.x = self._cone_radius
-        marker.scale.y = self._cone_radius
-        marker.scale.z = self._cone_height
-        
-        # Set color
-        marker.color.r = color[0]
-        marker.color.g = color[1]
-        marker.color.b = color[2]
-        marker.color.a = 1.0  # Fully opaque
-        
-        # Set lifetime
-        marker.lifetime = self._marker_lifetime.to_msg()
-        
+        marker.pose.position.z = 0.155
+        marker.pose.orientation.w = 1.0
+
+        marker.scale.x = 0.2
+        marker.scale.y = 0.2
+        marker.scale.z = 0.31
+
+        r, g, b = color_map[color_name]
+        marker.color.r = r
+        marker.color.g = g
+        marker.color.b = b
+        marker.color.a = 1.0
+
+        marker.lifetime = Duration(seconds=1.0).to_msg()
+
         return marker
+
 
 def main(args=None):
     rclpy.init(args=args)
-    node = ConeDetector()
-    
+    node = LidarConeClassifier()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
@@ -269,6 +168,7 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
